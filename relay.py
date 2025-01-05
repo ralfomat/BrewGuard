@@ -1,11 +1,8 @@
 from machine import Pin
+relay_pin = Pin(22, Pin.OUT)
 
 def relay_on():
-    relay = Pin(22,Pin.OUT)
-    relay.value(1)
-    return()
+    relay_pin.on()
 
 def relay_off():
-    relay = Pin(22,Pin.OUT)
-    relay.value(0)
-    return()
+    relay_pin.off()

@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: micropython-rotary-encoder
+Version: 0.0.3
+Summary: This is a micropython raspberry pi pico encoder library.
+Home-page: https://github.com/TTitanUA/micropython_rotary_encoder
+Author: TTitanUA
+Author-email: xttitanx@gmail.com
+License: MIT
