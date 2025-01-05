@@ -45,18 +45,38 @@ async def wait_for_rf_tag(rfid_reader, timeout=5000):  # timeout in Millisekunde
         await asyncio.sleep_ms(100)
     return None
 
-async def wait_for_button(buttons, timeout=10):
-    try:
-        return await asyncio.wait_for(button_pressed(buttons), timeout)
-    except asyncio.TimeoutError:
-        return None
+last_button_press = {
+    'up': 0,
+    'down': 0,
+    'enter': 0
+}
+
+DEBOUNCE_TIME = 250  
+
+def debounce(pin):
+    current_time = utime.ticks_ms()
+    if utime.ticks_diff(current_time, last_button_press[pin]) > DEBOUNCE_TIME:
+        last_button_press[pin] = current_time
+        return True
+    return False
 
 async def button_pressed(buttons):
+    button_names = ['up', 'down', 'enter']
     while True:
-        for button in buttons:
+        for button, name in zip(buttons, button_names):
             if button.value():
-                return button
-        await asyncio.sleep_ms(50)
+                if debounce(name):
+                    # Warte kurz und prüfe erneut, um sicherzustellen, dass es kein Prellen war
+                    await asyncio.sleep_ms(50)
+                    if button.value():
+                        return button
+        await asyncio.sleep_ms(10)
+
+async def wait_for_button(buttons, timeout=5000):
+    try:
+        return await asyncio.wait_for(button_pressed(buttons), timeout / 1000)
+    except asyncio.TimeoutError:
+        return None
 
 async def wait_for_new_tag(rfid_reader):
     while True:
@@ -99,7 +119,7 @@ async def main():
                     await asyncio.sleep(2)
         
         elif current_menu == "admin_main":
-            menu.show_admin_main_menu(selected_option)
+            menu.show_admin_main_menu(selected_option, user.coffee_count)
             button = await wait_for_button([up, down, enter])
             
             if button is None:
@@ -114,7 +134,7 @@ async def main():
                 if selected_option == 0:  # Start
                     relay.relay_on()
                     user.increment_coffee_count()
-                    menu.show_coffee_started()
+                    menu.show_coffee_started(user.coffee_count)
                     await asyncio.sleep(brew_time)
                     relay.relay_off()
                     current_menu = "main"
@@ -123,7 +143,7 @@ async def main():
                     selected_option = 0
         
         elif current_menu == "user_main":
-            menu.show_user_main_menu()
+            menu.show_user_main_menu(user.coffee_count)
             button = await wait_for_button([enter])
             
             if button is None:
@@ -133,7 +153,7 @@ async def main():
             if button == enter:
                 relay.relay_on()
                 user.increment_coffee_count()
-                menu.show_coffee_started()
+                menu.show_coffee_started(user.coffee_count)
                 await asyncio.sleep(brew_time)
                 relay.relay_off()
                 current_menu = "main"
@@ -154,8 +174,11 @@ async def main():
                 if selected_option == 0:  # New User
                     menu.show_new_user_menu()
                     new_tag_id = await wait_for_new_tag(rfid_reader)
-                    user_manager.add_user(new_tag_id, 'user')
-                    menu.show_new_user_registered()
+                    try:
+                        result = user_manager.add_user(new_tag_id, 'user')
+                        menu.show_user_added_success(new_tag_id)
+                    except ValueError as e:
+                        menu.show_user_exists_error(new_tag_id)
                     await asyncio.sleep(2)
                     
                 elif selected_option == 1:  # Reset Counter
@@ -189,26 +212,33 @@ async def main():
             elif button == enter:
                 save_brew_time(brew_time)
                 current_menu = "admin_menu"
-        
+                
         elif current_menu == "reset_counter":
             user = user_manager.get_user(card_id)
             if user:
-                menu.show_reset_counter_menu(user.coffee_count)
-                button = await wait_for_button([up, down, enter])
-                
-                if button is None or button == down:  # Down für "Back"
-                    current_menu = "admin_menu"
-                elif button == up:  # Up für "Reset"
-                    user.reset_coffee_count()
-                    menu.show_reset_counter_menu(0)
-                    await asyncio.sleep(1)
-                    current_menu = "admin_menu"
+                selected_option = 0  # 0 für "Reset", 1 für "Back"
+                while True:
+                    menu.show_reset_counter_menu(user.coffee_count, selected_option)
+                    button = await wait_for_button([up, down, enter])
+                    
+                    if button is None:
+                        current_menu = "admin_menu"
+                        break
+                    elif button == up or button == down:
+                        selected_option = 1 - selected_option  # Wechselt zwischen 0 und 1
+                    elif button == enter:
+                        if selected_option == 0:  # Reset
+                            user.reset_coffee_count()
+                            menu.show_reset_counter_menu(0, selected_option)
+                            await asyncio.sleep(1)
+                        current_menu = "admin_menu"
+                        break
             else:
                 menu.show_incorrect_nfc()
                 await asyncio.sleep(2)
                 current_menu = "admin_menu"
-        
-        await asyncio.sleep_ms(100)
+                
+                await asyncio.sleep_ms(100)
 
 if __name__ == "__main__":
     asyncio.run(main())

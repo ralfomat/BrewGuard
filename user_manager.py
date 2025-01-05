@@ -16,6 +16,28 @@ class User:
 class UserManager:
     users = {}
 
+    @staticmethod
+    def is_id_in_users_file(user_id):
+        try:
+            with open('users.txt', 'r') as file:
+                for line in file:
+                    existing_id, _, _ = line.strip().split(',')
+                    if int(existing_id) == user_id:
+                        return True
+        except FileNotFoundError:
+            return False
+        return False
+
+    @classmethod
+    def add_user(cls, rf_id, privileges):
+        if cls.is_id_in_users_file(rf_id):
+            raise ValueError(f"Fehler: Benutzer-ID {rf_id} existiert bereits.")
+        
+        new_user = User(rf_id, 0, privileges)
+        cls.users[rf_id] = new_user
+        cls.save_users()
+        return f"Benutzer-ID {rf_id} erfolgreich hinzugefügt."
+
     @classmethod
     def load_users(cls):
         try:
@@ -38,11 +60,5 @@ class UserManager:
     @classmethod
     def get_user(cls, rf_id):
         return cls.users.get(rf_id)
-
-    @classmethod
-    def add_user(cls, rf_id, privileges):
-        new_user = User(rf_id, 0, privileges)
-        cls.users[rf_id] = new_user
-        cls.save_users()
 
 UserManager.load_users()
