@@ -27,3 +27,12 @@ BrewGuard is a Smart Coffee Access & Analytics System. A solution that transform
 
 
 This project is perfect for offices, shared workspaces, and environments where coffee consumption tracking and access control are essential.
+
+
+## PCB Design
+
+![Coffee-Guard PCB](https://github.com/user-attachments/assets/fa5381da-e028-4d2a-90a4-283047aab0d7)
+BrewGuard Mainboard v0.1
+
+![keyboard](https://github.com/user-attachments/assets/8c86f01f-7387-4c70-9dcd-54cfc227dfe8)
+BrewGuard Keyboard v0.1
