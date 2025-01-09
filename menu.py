@@ -41,14 +41,14 @@ class Menu:
         self.display.text("recognized!", 18, 42)
         self.display.show()
 
-    def show_admin_menu(self, selected_option):
+    def show_admin_menu(self, options, start_index, selected_index):
         self.display.fill(0)
-        self.display.text("Admin-Menu", 0, 0)
-        self.display.text("New User", 0, 20)
-        self.display.text("Reset Counter", 0, 30)
-        self.display.text("Brew-Time", 0, 40)
-        self.display.text("Back", 0, 50)
-        self.gfx.rect(0, 18 + selected_option * 10, 128, 11, 1)
+        self.display.text("Admin Menu", 0, 0)
+        for i in range(4):
+            if start_index + i < len(options):
+                self.display.text(options[start_index + i], 5, 16 + i * 12)
+        selected_y = 14 + ((selected_index - start_index) % 4) * 12
+        self.gfx.rect(0, selected_y, 128, 12, 1)
         self.display.show()
 
     def show_coffee_started(self, coffee_count):
@@ -112,4 +112,38 @@ class Menu:
         self.display.text("Success:", 0, 10)
         self.display.text(f"User ID {user_id}", 0, 30)
         self.display.text("added", 0, 40)
+        self.display.show()
+
+    def show_all_users(self, users, start_index):
+        self.display.fill(0)
+        self.display.text("Users:", 0, 0)
+        for i in range(4):
+            if start_index + i < len(users):
+                user = users[start_index + i]
+                self.display.text(f"{user.rf_id}: {user.coffee_count}", 0, 16 + i * 12)
+        self.display.show()
+
+    def show_reset_all_confirmation(self, selected_option):
+        self.display.fill(0)
+        self.display.text("Reset all User", 0, 10)
+        self.display.text("Counters?", 0, 22)
+        self.display.text("Back", 9, 52)
+        self.display.text("OK", 102, 52)
+        if selected_option == 0:
+            self.gfx.rect(5, 48, 40, 16, 1)
+        else:
+            self.gfx.rect(95, 48, 30, 16, 1)
+        self.display.show()
+        
+    def show_counter_reset(self):
+        self.display.fill(0)
+        self.display.text("All counters", 0, 20)
+        self.display.text("are reset!", 0, 40)
+        self.display.show()
+        
+    def show_message(self, message):
+        self.display.fill(0)
+        lines = message.split('\n')
+        for i, line in enumerate(lines):
+            self.display.text(line, 0, i * 12)
         self.display.show()

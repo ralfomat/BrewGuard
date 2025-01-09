@@ -101,6 +101,10 @@ async def main():
     selected_option = 0
     
     brew_time = read_brew_time()
+    
+    admin_menu_options = ["New User", "Reset User", "Show all Users", "Reset Counters", "Set Brew Time", "Back"]
+    admin_menu_start = 0
+    admin_menu_selected = 0
 
     while True:
         if current_menu == "main":
@@ -159,7 +163,7 @@ async def main():
                 current_menu = "main"
             
         elif current_menu == "admin_menu":
-            menu.show_admin_menu(selected_option)
+            menu.show_admin_menu(admin_menu_options, admin_menu_start, admin_menu_selected)
             button = await wait_for_button([up, down, enter])
             
             if button is None:
@@ -167,11 +171,20 @@ async def main():
                 continue
                         
             if button == up:
-                selected_option = (selected_option - 1) % 4
+                admin_menu_selected = (admin_menu_selected - 1) % len(admin_menu_options)
+                if admin_menu_selected < admin_menu_start:
+                    admin_menu_start = admin_menu_selected
+                elif admin_menu_selected >= admin_menu_start + 4:
+                    admin_menu_start = admin_menu_selected - 3
             elif button == down:
-                selected_option = (selected_option + 1) % 4
+                admin_menu_selected = (admin_menu_selected + 1) % len(admin_menu_options)
+                if admin_menu_selected >= admin_menu_start + 4:
+                    admin_menu_start = admin_menu_selected - 3
+                elif admin_menu_selected < admin_menu_start:
+                    admin_menu_start = admin_menu_selected
+                    
             elif button == enter:
-                if selected_option == 0:  # New User
+                if admin_menu_options[admin_menu_selected] == "New User":
                     menu.show_new_user_menu()
                     new_tag_id = await wait_for_new_tag(rfid_reader)
                     try:
@@ -181,7 +194,7 @@ async def main():
                         menu.show_user_exists_error(new_tag_id)
                     await asyncio.sleep(2)
                     
-                elif selected_option == 1:  # Reset Counter
+                elif admin_menu_options[admin_menu_selected] == "Reset User":
                     menu.show_rf_tag_prompt()
                     card_id = await wait_for_rf_tag(rfid_reader)
                     if card_id:
@@ -191,11 +204,18 @@ async def main():
                         await asyncio.sleep(2)
                         current_menu = "admin_menu"
                 
-                elif selected_option == 2:  # Brew Time
+                elif admin_menu_options[admin_menu_selected] == "Show all Users":
+                    current_menu = "show_all_users"
+                    
+                elif admin_menu_options[admin_menu_selected] == "Reset Counters":
+                    current_menu = "reset_all_confirmation"
+                
+                elif admin_menu_options[admin_menu_selected] == "Set Brew Time":
                     current_menu = "set_time"
                 
-                elif selected_option == 3:  # Back
+                elif admin_menu_options[admin_menu_selected] == "Back":
                     current_menu = "admin_main"
+                    
             
         elif current_menu == "set_time":
             menu.show_set_time_menu(brew_time)
@@ -239,6 +259,41 @@ async def main():
                 current_menu = "admin_menu"
                 
                 await asyncio.sleep_ms(100)
+        
+        elif current_menu == "show_all_users":
+            users = list(user_manager.users.values())
+            start_index = 0
+            while True:
+                menu.show_all_users(users, start_index)
+                button = await wait_for_button([up, down, enter])
+                if button == up and start_index > 0:
+                    start_index -= 1
+                elif button == down and start_index < len(users) - 4:
+                    start_index += 1
+                elif button == enter:
+                    current_menu = "admin_menu"
+                    break
+
+        elif current_menu == "reset_all_confirmation":
+            selected_option = 0
+            while True:
+                menu.show_reset_all_confirmation(selected_option)
+                button = await wait_for_button([up, down, enter])
+                if button == up or button == down:
+                    selected_option = 1 - selected_option
+                elif button == enter:
+                    if selected_option == 0:  # Back
+                        current_menu = "admin_menu"
+                    else:  # OK
+                        for user in user_manager.users.values():
+                            user.reset_coffee_count()
+                        user_manager.save_users()
+                        menu.show_counter_reset()
+                        await asyncio.sleep(2)
+                        current_menu = "admin_menu"
+                    break
+        
 
 if __name__ == "__main__":
     asyncio.run(main())
+
